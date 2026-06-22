@@ -228,7 +228,7 @@ const RegisterExpertInput = z
     hobbies_interests: z.string().trim().max(500).optional().nullable(),
     digital_identity: z.string().trim().max(1000).optional().nullable(),
     special_notes: z.string().trim().max(1000).optional().nullable(),
-    fieldIds: z.array(z.string().uuid()).min(1, "Pick at least one field of expertise"),
+    fieldIds: z.array(z.string().uuid()).optional().default([]),
     newFieldNames: z.array(z.string().trim().min(2).max(80)).optional().default([]),
     hp: z.string().max(0),
     challenge: z.string(),
@@ -237,6 +237,13 @@ const RegisterExpertInput = z
     const r = antiBot.safeParse({ hp: v.hp, challenge: v.challenge });
     if (!r.success) {
       for (const i of r.error.issues) ctx.addIssue(i);
+    }
+    if ((v.fieldIds || []).length === 0 && (v.newFieldNames || []).length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Pick at least one field of expertise",
+        path: ["fieldIds"],
+      });
     }
   });
 

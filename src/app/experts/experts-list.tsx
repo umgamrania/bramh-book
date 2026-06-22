@@ -39,6 +39,7 @@ export function ExpertsListClient({
   initialExperts: Expert[];
 }) {
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [city, setCity] = useState<string>(ANY);
   const [state, setState] = useState<string>(ANY);
   const [education, setEducation] = useState<string>(ANY);
@@ -53,6 +54,17 @@ export function ExpertsListClient({
     [quickField, fieldIds],
   );
 
+  // Debounce search query
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [search]);
+
   // Fetch filtered experts when query states change
   useEffect(() => {
     let active = true;
@@ -61,7 +73,7 @@ export function ExpertsListClient({
       try {
         const res = await listExperts({
           data: {
-            search: search || undefined,
+            search: debouncedSearch || undefined,
             city: city !== ANY ? city : undefined,
             state: state !== ANY ? state : undefined,
             education: education !== ANY ? education : undefined,
@@ -85,7 +97,7 @@ export function ExpertsListClient({
     return () => {
       active = false;
     };
-  }, [search, city, state, education, effectiveFieldIds]);
+  }, [debouncedSearch, city, state, education, effectiveFieldIds]);
 
   const toggleField = (id: string) =>
     setFieldIds((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
@@ -107,25 +119,6 @@ export function ExpertsListClient({
           <p className="mt-2 text-muted-foreground">
             Browse members of the BB community who've offered to help.
           </p>
-        </div>
-
-        <div className="w-full md:w-80">
-          <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-            Quick browse by field
-          </Label>
-          <Select value={quickField} onValueChange={setQuickField}>
-            <SelectTrigger>
-              <SelectValue placeholder="All fields" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ANY}>All fields</SelectItem>
-              {fields.map((f) => (
-                <SelectItem key={f.id} value={f.id}>
-                  {f.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
       </div>
 
@@ -163,11 +156,10 @@ export function ExpertsListClient({
                     type="button"
                     key={f.id}
                     onClick={() => toggleField(f.id)}
-                    className={`rounded-full border px-2.5 py-1 text-xs cursor-pointer transition-all ${
-                      sel
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-background hover:bg-accent border-border"
-                    }`}
+                    className={`rounded-full border px-2.5 py-1 text-xs cursor-pointer transition-all ${sel
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-background hover:bg-accent border-border"
+                      }`}
                   >
                     {f.name}
                   </button>
