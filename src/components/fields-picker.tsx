@@ -97,8 +97,8 @@ export function FieldsPicker({
             <div
               key={n}
               className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm transition-colors ${selected
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-background text-foreground border-border hover:bg-accent"
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background text-foreground border-border hover:bg-accent"
                 }`}
             >
               <button

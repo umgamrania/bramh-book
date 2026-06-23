@@ -40,6 +40,7 @@ export function ExpertsListClient({
 }) {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [fieldSearch, setFieldSearch] = useState("");
   const [city, setCity] = useState<string>(ANY);
   const [state, setState] = useState<string>(ANY);
   const [education, setEducation] = useState<string>(ANY);
@@ -53,6 +54,10 @@ export function ExpertsListClient({
     () => (quickField !== ANY ? [quickField] : fieldIds),
     [quickField, fieldIds],
   );
+
+  const filteredFields = useMemo(() => {
+    return fields.filter((f) => f.name.toLowerCase().includes(fieldSearch.toLowerCase()));
+  }, [fields, fieldSearch]);
 
   // Debounce search query
   useEffect(() => {
@@ -104,6 +109,7 @@ export function ExpertsListClient({
 
   const reset = () => {
     setSearch("");
+    setFieldSearch("");
     setCity(ANY);
     setState(ANY);
     setEducation(ANY);
@@ -148,23 +154,33 @@ export function ExpertsListClient({
 
           <div className="space-y-2">
             <Label>Fields</Label>
-            <div className="flex flex-wrap gap-1.5 max-h-60 overflow-auto">
-              {fields.map((f) => {
-                const sel = fieldIds.includes(f.id);
-                return (
-                  <button
-                    type="button"
-                    key={f.id}
-                    onClick={() => toggleField(f.id)}
-                    className={`rounded-full border px-2.5 py-1 text-xs cursor-pointer transition-all ${sel
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-background hover:bg-accent border-border"
-                      }`}
-                  >
-                    {f.name}
-                  </button>
-                );
-              })}
+            <Input
+              placeholder="Search fields..."
+              value={fieldSearch}
+              onChange={(e) => setFieldSearch(e.target.value)}
+              className="text-xs h-8"
+            />
+            <div className="flex flex-wrap gap-1.5 max-h-60 overflow-auto pt-1">
+              {filteredFields.length === 0 ? (
+                <span className="text-xs text-muted-foreground pt-1">No fields found.</span>
+              ) : (
+                filteredFields.map((f) => {
+                  const sel = fieldIds.includes(f.id);
+                  return (
+                    <button
+                      type="button"
+                      key={f.id}
+                      onClick={() => toggleField(f.id)}
+                      className={`rounded-full border px-2.5 py-1 text-xs cursor-pointer transition-all ${sel
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background hover:bg-accent border-border text-foreground"
+                        }`}
+                    >
+                      {f.name}
+                    </button>
+                  );
+                })
+              )}
             </div>
           </div>
 
