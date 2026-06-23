@@ -121,7 +121,9 @@ export function FieldsPicker({
                   setAllNewFieldNames(allNewFieldNames.filter((x) => x !== n));
                   onChangeNew(newFieldNames.filter((x) => x !== n));
                 }}
-                className={`ml-1.5 rounded-full p-0.5 hover:bg-muted/20 cursor-pointer ${selected ? "text-primary-foreground/80 hover:text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                className={`ml-1.5 rounded-full p-0.5 hover:bg-muted/20 cursor-pointer ${selected
+                  ? "text-primary-foreground/80 hover:text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
                   }`}
                 title="Remove field"
               >
@@ -173,4 +175,3 @@ export function FieldsPicker({
     </div>
   );
 }
-

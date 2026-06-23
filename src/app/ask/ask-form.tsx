@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { submitQuestion } from "@/lib/brahmbook.functions";
+import { submitQuestion, getMathChallenge } from "@/lib/brahmbook.functions";
 import { FieldsPicker } from "@/components/fields-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { RefreshCw } from "lucide-react";
 
 export function AskForm({ fields }: { fields: { id: string; name: string }[] }) {
   const [query_text, setQ] = useState("");
@@ -18,9 +19,26 @@ export function AskForm({ fields }: { fields: { id: string; name: string }[] }) 
   const [fieldIds, setFieldIds] = useState<string[]>([]);
   const [newFieldNames, setNew] = useState<string[]>([]);
   const [hp, setHp] = useState("");
-  const [challenge, setCh] = useState("");
+  const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaValue, setCaptchaValue] = useState("");
+  const [captchaQuestion, setCaptchaQuestion] = useState("");
   const [isPending, setIsPending] = useState(false);
   const [done, setDone] = useState(false);
+
+  const refreshChallenge = useCallback(async () => {
+    try {
+      const res = await getMathChallenge();
+      setCaptchaToken(res.token);
+      setCaptchaValue("");
+      setCaptchaQuestion(res.question);
+    } catch (err) {
+      toast.error("Failed to load security challenge. Please refresh the page.");
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshChallenge();
+  }, [refreshChallenge]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,13 +53,15 @@ export function AskForm({ fields }: { fields: { id: string; name: string }[] }) 
           email,
           fieldIds,
           hp,
-          challenge,
+          captchaToken,
+          captchaValue,
         },
       });
       setDone(true);
       toast.success("Your question has been submitted.");
     } catch (error: any) {
       toast.error(error?.message ?? "Submission failed");
+      refreshChallenge();
     } finally {
       setIsPending(false);
     }
@@ -127,13 +147,28 @@ export function AskForm({ fields }: { fields: { id: string; name: string }[] }) 
         autoComplete="off"
       />
       <div className="space-y-1.5">
-        <Label>What is 3 + 4? *</Label>
-        <Input
-          value={challenge}
-          onChange={(e) => setCh(e.target.value)}
-          required
-          className="max-w-[120px]"
-        />
+        <Label htmlFor="captcha-input">{captchaQuestion || "Loading question..."} *</Label>
+        <div className="flex items-center gap-2">
+          <Input
+            id="captcha-input"
+            value={captchaValue}
+            onChange={(e) => setCaptchaValue(e.target.value)}
+            required
+            className="max-w-[120px] text-center font-semibold"
+            autoComplete="off"
+            disabled={!captchaQuestion}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            onClick={refreshChallenge}
+            className="h-10 w-10 shrink-0"
+            title="Get new question"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       <Button type="submit" disabled={isPending} size="lg">

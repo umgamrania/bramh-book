@@ -1,15 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { registerExpert } from "@/lib/brahmbook.functions";
+import { registerExpert, getMathChallenge } from "@/lib/brahmbook.functions";
 import { FieldsPicker } from "@/components/fields-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { RefreshCw } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -38,7 +39,8 @@ type State = {
   fieldIds: string[];
   newFieldNames: string[];
   hp: string;
-  challenge: string;
+  captchaToken: string;
+  captchaValue: string;
 };
 
 const empty: State = {
@@ -61,7 +63,8 @@ const empty: State = {
   fieldIds: [],
   newFieldNames: [],
   hp: "",
-  challenge: "",
+  captchaToken: "",
+  captchaValue: "",
 };
 
 export function RegisterForm({ fields }: { fields: { id: string; name: string }[] }) {
@@ -69,8 +72,24 @@ export function RegisterForm({ fields }: { fields: { id: string; name: string }[
   const [s, setS] = useState<State>(empty);
   const [isPending, setIsPending] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [captchaQuestion, setCaptchaQuestion] = useState<string>("");
 
   const set = <K extends keyof State>(k: K, v: State[K]) => setS((p) => ({ ...p, [k]: v }));
+
+  const refreshChallenge = useCallback(async () => {
+    try {
+      const res = await getMathChallenge();
+      set("captchaToken", res.token);
+      set("captchaValue", "");
+      setCaptchaQuestion(res.question);
+    } catch (err) {
+      toast.error("Failed to load security challenge. Please refresh the page.");
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshChallenge();
+  }, [refreshChallenge]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,13 +119,15 @@ export function RegisterForm({ fields }: { fields: { id: string; name: string }[
           fieldIds: s.fieldIds,
           newFieldNames: s.newFieldNames,
           hp: s.hp,
-          challenge: s.challenge,
+          captchaToken: s.captchaToken,
+          captchaValue: s.captchaValue,
         },
       });
       setSubmitted(true);
       toast.success("Profile submitted. Thank you!");
     } catch (error: any) {
       toast.error(error?.message ?? "Submission failed");
+      refreshChallenge();
     } finally {
       setIsPending(false);
     }
@@ -288,14 +309,32 @@ export function RegisterForm({ fields }: { fields: { id: string; name: string }[
           tabIndex={-1}
           autoComplete="off"
         />
-        <Field label="What is 3 + 4? *">
-          <Input
-            value={s.challenge}
-            onChange={(e) => set("challenge", e.target.value)}
-            required
-            className="max-w-[120px]"
-          />
-        </Field>
+        <div className="flex items-end gap-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="captcha-input">{captchaQuestion || "Loading question..."} *</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="captcha-input"
+                value={s.captchaValue}
+                onChange={(e) => set("captchaValue", e.target.value)}
+                required
+                className="max-w-[120px] text-center font-semibold"
+                autoComplete="off"
+                disabled={!captchaQuestion}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={refreshChallenge}
+                className="h-10 w-10 shrink-0"
+                title="Get new question"
+              >
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
       </Section>
 
       <div className="flex items-center gap-3">

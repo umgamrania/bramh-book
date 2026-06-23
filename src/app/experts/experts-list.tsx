@@ -171,10 +171,11 @@ export function ExpertsListClient({
                       type="button"
                       key={f.id}
                       onClick={() => toggleField(f.id)}
-                      className={`rounded-full border px-2.5 py-1 text-xs cursor-pointer transition-all ${sel
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-background hover:bg-accent border-border text-foreground"
-                        }`}
+                      className={`rounded-full border px-2.5 py-1 text-xs cursor-pointer transition-all ${
+                        sel
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background hover:bg-accent border-border text-foreground"
+                      }`}
                     >
                       {f.name}
                     </button>

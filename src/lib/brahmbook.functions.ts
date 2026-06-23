@@ -1,5 +1,6 @@
 "use server";
 
+import crypto from "crypto";
 import pool from "./db";
 import { initDb } from "./db-init";
 import { z } from "zod";
@@ -197,12 +198,78 @@ export async function getExpert({ data }: { data: { id: string } }) {
   }
 }
 
-// ---------------- Honeypot/math check ----------------
+// ---------------- Cryptographic Math Challenge System ----------------
+const CHALLENGE_SECRET = process.env.CAPTCHA_SECRET || crypto.randomBytes(32).toString("hex");
+const ALGORITHM = "aes-256-cbc";
+const KEY = crypto.createHash("sha256").update(CHALLENGE_SECRET).digest();
+
+function encrypt(text: string): string {
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv(ALGORITHM, KEY, iv);
+  let encrypted = cipher.update(text, "utf8", "hex");
+  encrypted += cipher.final("hex");
+  return `${iv.toString("hex")}:${encrypted}`;
+}
+
+function decrypt(text: string): string {
+  try {
+    const [ivHex, encryptedText] = text.split(":");
+    if (!ivHex || !encryptedText) return "";
+    const iv = Buffer.from(ivHex, "hex");
+    const decipher = crypto.createDecipheriv(ALGORITHM, KEY, iv);
+    let decrypted = decipher.update(encryptedText, "hex", "utf8");
+    decrypted += decipher.final("utf8");
+    return decrypted;
+  } catch (error) {
+    return "";
+  }
+}
+
+function verifyChallenge(token: string, value: string): boolean {
+  if (!token || !value) return false;
+  const decrypted = decrypt(token);
+  if (!decrypted) return false;
+
+  const [answer, expiresAtStr] = decrypted.split("|");
+  if (!answer || !expiresAtStr) return false;
+
+  const expiresAt = parseInt(expiresAtStr, 10);
+  if (isNaN(expiresAt) || Date.now() > expiresAt) {
+    return false;
+  }
+
+  return answer.trim() === value.trim();
+}
+
+// Server Action to request a new math challenge
+export async function getMathChallenge() {
+  const op = Math.random() > 0.5 ? "+" : "-";
+  let num1 = 0;
+  let num2 = 0;
+  let answer = 0;
+
+  if (op === "+") {
+    num1 = Math.floor(Math.random() * 15) + 1; // 1 to 15
+    num2 = Math.floor(Math.random() * 15) + 1; // 1 to 15
+    answer = num1 + num2;
+  } else {
+    num1 = Math.floor(Math.random() * 15) + 10; // 10 to 24
+    num2 = Math.floor(Math.random() * 9) + 1; // 1 to 9 (guarantees positive result)
+    answer = num1 - num2;
+  }
+
+  const question = `What is ${num1} ${op} ${num2}?`;
+  const expiresAt = Date.now() + 600000; // 10 minutes
+  const token = encrypt(`${answer}|${expiresAt}`);
+
+  return { question, token };
+}
+
+// ---------------- Honeypot/captcha check ----------------
 const antiBot = z.object({
   hp: z.string().max(0, "Bot detected"),
-  challenge: z
-    .string()
-    .refine((v) => v.trim() === "7", "Please solve the simple math question (3 + 4)."),
+  captchaToken: z.string().min(1, "Challenge token is missing"),
+  captchaValue: z.string().trim().min(1, "Please answer the quick question"),
 });
 
 // ---------------- Register expert ----------------
@@ -231,12 +298,23 @@ const RegisterExpertInput = z
     fieldIds: z.array(z.string().uuid()).optional().default([]),
     newFieldNames: z.array(z.string().trim().min(2).max(80)).optional().default([]),
     hp: z.string().max(0),
-    challenge: z.string(),
+    captchaToken: z.string(),
+    captchaValue: z.string(),
   })
   .superRefine((v, ctx) => {
-    const r = antiBot.safeParse({ hp: v.hp, challenge: v.challenge });
+    const r = antiBot.safeParse({
+      hp: v.hp,
+      captchaToken: v.captchaToken,
+      captchaValue: v.captchaValue,
+    });
     if (!r.success) {
       for (const i of r.error.issues) ctx.addIssue(i);
+    } else if (!verifyChallenge(v.captchaToken, v.captchaValue)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Incorrect answer or expired challenge. Please try again.",
+        path: ["captchaValue"],
+      });
     }
     if ((v.fieldIds || []).length === 0 && (v.newFieldNames || []).length === 0) {
       ctx.addIssue({
@@ -251,7 +329,11 @@ type RegisterExpertType = z.infer<typeof RegisterExpertInput>;
 
 export async function registerExpert({ data }: { data: RegisterExpertType }) {
   await initDb();
-  const parsed = RegisterExpertInput.parse(data);
+  const result = RegisterExpertInput.safeParse(data);
+  if (!result.success) {
+    throw new Error(result.error.errors[0].message);
+  }
+  const parsed = result.data;
   const client = await pool.connect();
 
   try {
@@ -344,12 +426,23 @@ const SubmitQuestionInput = z
     email: z.string().trim().email().max(255),
     fieldIds: z.array(z.string().uuid()).optional().default([]),
     hp: z.string().max(0),
-    challenge: z.string(),
+    captchaToken: z.string(),
+    captchaValue: z.string(),
   })
   .superRefine((v, ctx) => {
-    const r = antiBot.safeParse({ hp: v.hp, challenge: v.challenge });
+    const r = antiBot.safeParse({
+      hp: v.hp,
+      captchaToken: v.captchaToken,
+      captchaValue: v.captchaValue,
+    });
     if (!r.success) {
       for (const i of r.error.issues) ctx.addIssue(i);
+    } else if (!verifyChallenge(v.captchaToken, v.captchaValue)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Incorrect answer or expired challenge. Please try again.",
+        path: ["captchaValue"],
+      });
     }
   });
 
@@ -357,7 +450,11 @@ type SubmitQuestionType = z.infer<typeof SubmitQuestionInput>;
 
 export async function submitQuestion({ data }: { data: SubmitQuestionType }) {
   await initDb();
-  const parsed = SubmitQuestionInput.parse(data);
+  const result = SubmitQuestionInput.safeParse(data);
+  if (!result.success) {
+    throw new Error(result.error.errors[0].message);
+  }
+  const parsed = result.data;
   const client = await pool.connect();
 
   try {
