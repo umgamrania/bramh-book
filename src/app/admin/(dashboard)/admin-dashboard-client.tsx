@@ -90,6 +90,10 @@ export function AdminDashboardClient({
   // Search & Filter state
   const [expertSearch, setExpertSearch] = useState("");
   const [expertStatusFilter, setExpertStatusFilter] = useState("all");
+  const [expertCityFilter, setExpertCityFilter] = useState("all");
+  const [expertEducationFilter, setExpertEducationFilter] = useState("all");
+  const [expertOccupationFilter, setExpertOccupationFilter] = useState("all");
+  const [expertFieldFilter, setExpertFieldFilter] = useState("all");
 
   const [questionSearch, setQuestionSearch] = useState("");
   const [questionStatusFilter, setQuestionStatusFilter] = useState("all");
@@ -109,6 +113,31 @@ export function AdminDashboardClient({
 
   // Field Options (from fields list)
   const activeFields = fields.filter((f) => f.status === "active");
+
+  // Unique filter lists from experts
+  const expertCities = React.useMemo(() => {
+    const cities = new Set<string>();
+    experts.forEach((e) => {
+      if (e.city) cities.add(e.city.trim());
+    });
+    return Array.from(cities).sort();
+  }, [experts]);
+
+  const expertEducations = React.useMemo(() => {
+    const educations = new Set<string>();
+    experts.forEach((e) => {
+      if (e.education) educations.add(e.education.trim());
+    });
+    return Array.from(educations).sort();
+  }, [experts]);
+
+  const expertOccupations = React.useMemo(() => {
+    const occupations = new Set<string>();
+    experts.forEach((e) => {
+      if (e.occupation) occupations.add(e.occupation.trim());
+    });
+    return Array.from(occupations).sort();
+  }, [experts]);
 
   const refreshStats = async () => {
     try {
@@ -136,9 +165,9 @@ export function AdminDashboardClient({
             prev.map((e) =>
               e.id === editingExpert.id
                 ? {
-                    ...editingExpert,
-                    fields: fields.filter((f) => editingExpert.fieldIds.includes(f.id)),
-                  }
+                  ...editingExpert,
+                  fields: fields.filter((f) => editingExpert.fieldIds.includes(f.id)),
+                }
                 : e,
             ),
           );
@@ -168,9 +197,9 @@ export function AdminDashboardClient({
             prev.map((q) =>
               q.id === editingQuestion.id
                 ? {
-                    ...editingQuestion,
-                    fields: fields.filter((f) => editingQuestion.fieldIds.includes(f.id)),
-                  }
+                  ...editingQuestion,
+                  fields: fields.filter((f) => editingQuestion.fieldIds.includes(f.id)),
+                }
                 : q,
             ),
           );
@@ -246,8 +275,31 @@ export function AdminDashboardClient({
       (e.email && e.email.toLowerCase().includes(expertSearch.toLowerCase())) ||
       (e.occupation && e.occupation.toLowerCase().includes(expertSearch.toLowerCase())) ||
       (e.city && e.city.toLowerCase().includes(expertSearch.toLowerCase()));
+
     const matchesStatus = expertStatusFilter === "all" || e.status === expertStatusFilter;
-    return matchesSearch && matchesStatus;
+
+    const matchesCity =
+      expertCityFilter === "all" || (e.city && e.city.trim() === expertCityFilter);
+
+    const matchesEducation =
+      expertEducationFilter === "all" ||
+      (e.education && e.education.trim() === expertEducationFilter);
+
+    const matchesOccupation =
+      expertOccupationFilter === "all" ||
+      (e.occupation && e.occupation.trim() === expertOccupationFilter);
+
+    const matchesField =
+      expertFieldFilter === "all" || e.fields.some((f: any) => f.id === expertFieldFilter);
+
+    return (
+      matchesSearch &&
+      matchesStatus &&
+      matchesCity &&
+      matchesEducation &&
+      matchesOccupation &&
+      matchesField
+    );
   });
 
   const filteredQuestions = questions.filter((q) => {
@@ -301,7 +353,7 @@ export function AdminDashboardClient({
               {stats.experts.pending > 0 && (
                 <span className="text-saffron font-medium flex items-center gap-0.5">
                   <span className="inline-block w-1.5 h-1.5 rounded-full bg-saffron animate-pulse" />
-                  {stats.experts.pending} Pending Approval
+                  {stats.experts.pending} Pending
                 </span>
               )}
             </p>
@@ -384,18 +436,18 @@ export function AdminDashboardClient({
         {/* --- EXPERTS TAB --- */}
         <TabsContent value="experts" className="space-y-4">
           {/* Controls */}
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-6">
+            <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                className="pl-8 bg-card border-border"
-                placeholder="Search experts by name, email, city, occupation..."
+                className="pl-8 bg-card border-border w-full"
+                placeholder="Search experts..."
                 value={expertSearch}
                 onChange={(e) => setExpertSearch(e.target.value)}
               />
             </div>
             <Select value={expertStatusFilter} onValueChange={setExpertStatusFilter}>
-              <SelectTrigger className="w-full sm:w-[180px] bg-card border-border">
+              <SelectTrigger className="bg-card border-border">
                 <SelectValue placeholder="Filter by Status" />
               </SelectTrigger>
               <SelectContent>
@@ -403,6 +455,58 @@ export function AdminDashboardClient({
                 <SelectItem value="approved">Approved</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="rejected">Rejected</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={expertFieldFilter} onValueChange={setExpertFieldFilter}>
+              <SelectTrigger className="bg-card border-border">
+                <SelectValue placeholder="Filter by Field" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Fields</SelectItem>
+                {activeFields.map((f) => (
+                  <SelectItem key={f.id} value={f.id}>
+                    {f.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={expertCityFilter} onValueChange={setExpertCityFilter}>
+              <SelectTrigger className="bg-card border-border">
+                <SelectValue placeholder="Filter by City" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Cities</SelectItem>
+                {expertCities.map((city) => (
+                  <SelectItem key={city} value={city}>
+                    {city}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={expertEducationFilter} onValueChange={setExpertEducationFilter}>
+              <SelectTrigger className="bg-card border-border">
+                <SelectValue placeholder="Filter by Education" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Educations</SelectItem>
+                {expertEducations.map((edu) => (
+                  <SelectItem key={edu} value={edu}>
+                    {edu}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={expertOccupationFilter} onValueChange={setExpertOccupationFilter}>
+              <SelectTrigger className="bg-card border-border">
+                <SelectValue placeholder="Filter by Occupation" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Occupations</SelectItem>
+                {expertOccupations.map((occ) => (
+                  <SelectItem key={occ} value={occ}>
+                    {occ}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -675,7 +779,7 @@ export function AdminDashboardClient({
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="pending_review">Pending Review</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -707,7 +811,7 @@ export function AdminDashboardClient({
                         </td>
                         <td className="p-4 text-muted-foreground">{formatDate(f.created_at)}</td>
                         <td className="p-4 text-right space-x-1 whitespace-nowrap">
-                          {f.status === "pending_review" && (
+                          {f.status === "pending" && (
                             <Button
                               variant="outline"
                               size="sm"
@@ -801,7 +905,7 @@ export function AdminDashboardClient({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="approved">Approved</SelectItem>
-                      <SelectItem value="pending">Pending Review</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
                       <SelectItem value="rejected">Rejected</SelectItem>
                     </SelectContent>
                   </Select>
@@ -996,11 +1100,10 @@ export function AdminDashboardClient({
                       <button
                         type="button"
                         key={f.id}
-                        className={`rounded-full border px-3 py-1 text-xs cursor-pointer transition-all ${
-                          isChecked
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : "bg-background border-border text-foreground hover:bg-muted"
-                        }`}
+                        className={`rounded-full border px-3 py-1 text-xs cursor-pointer transition-all ${isChecked
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background border-border text-foreground hover:bg-muted"
+                          }`}
                         onClick={() => {
                           const ids = editingExpert.fieldIds || [];
                           const updatedIds = isChecked
@@ -1129,11 +1232,10 @@ export function AdminDashboardClient({
                       <button
                         type="button"
                         key={f.id}
-                        className={`rounded-full border px-3 py-1 text-xs cursor-pointer transition-all ${
-                          isChecked
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : "bg-background border-border text-foreground hover:bg-muted"
-                        }`}
+                        className={`rounded-full border px-3 py-1 text-xs cursor-pointer transition-all ${isChecked
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background border-border text-foreground hover:bg-muted"
+                          }`}
                         onClick={() => {
                           const ids = editingQuestion.fieldIds || [];
                           const updatedIds = isChecked
@@ -1206,7 +1308,7 @@ export function AdminDashboardClient({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="active">Active (Visible Publicly)</SelectItem>
-                    <SelectItem value="pending_review">Pending Review (Hidden)</SelectItem>
+                    <SelectItem value="pending">Pending Review (Hidden)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1278,7 +1380,7 @@ function StatusBadge({ status }: { status: string }) {
         </span>
       );
     case "pending":
-    case "pending_review":
+    case "pending":
     case "new":
     case "in_review":
       return (
