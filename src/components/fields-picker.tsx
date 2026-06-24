@@ -96,10 +96,11 @@ export function FieldsPicker({
           return (
             <div
               key={n}
-              className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm transition-colors ${selected
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-background text-foreground border-border hover:bg-accent"
-                }`}
+              className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm transition-colors ${
+                selected
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background text-foreground border-border hover:bg-accent"
+              }`}
             >
               <button
                 type="button"
@@ -121,10 +122,11 @@ export function FieldsPicker({
                   setAllNewFieldNames(allNewFieldNames.filter((x) => x !== n));
                   onChangeNew(newFieldNames.filter((x) => x !== n));
                 }}
-                className={`ml-1.5 rounded-full p-0.5 hover:bg-muted/20 cursor-pointer ${selected
-                  ? "text-primary-foreground/80 hover:text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-                  }`}
+                className={`ml-1.5 rounded-full p-0.5 hover:bg-muted/20 cursor-pointer ${
+                  selected
+                    ? "text-primary-foreground/80 hover:text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
                 title="Remove field"
               >
                 <X className="h-3 w-3" />
