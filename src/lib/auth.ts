@@ -32,7 +32,10 @@ function decryptSession(text: string): string {
   }
 }
 
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export async function loginAdmin(password: string) {
+  await delay(1000);
   const adminPassword = process.env.ADMIN_PASSWORD || "admin123";
   if (password === adminPassword) {
     // Generate session token valid for 24 hours

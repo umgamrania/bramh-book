@@ -93,6 +93,7 @@ export function AdminDashboardClient({
 
   const [questionSearch, setQuestionSearch] = useState("");
   const [questionStatusFilter, setQuestionStatusFilter] = useState("all");
+  const [questionFieldFilter, setQuestionFieldFilter] = useState("all");
 
   const [fieldSearch, setFieldSearch] = useState("");
   const [fieldStatusFilter, setFieldStatusFilter] = useState("all");
@@ -254,8 +255,13 @@ export function AdminDashboardClient({
       q.query_text.toLowerCase().includes(questionSearch.toLowerCase()) ||
       q.name.toLowerCase().includes(questionSearch.toLowerCase()) ||
       (q.email && q.email.toLowerCase().includes(questionSearch.toLowerCase()));
+
     const matchesStatus = questionStatusFilter === "all" || q.status === questionStatusFilter;
-    return matchesSearch && matchesStatus;
+
+    const matchesField =
+      questionFieldFilter === "all" || q.fields.some((f: any) => f.id === questionFieldFilter);
+
+    return matchesSearch && matchesStatus && matchesField;
   });
 
   const filteredFields = fields.filter((f) => {
@@ -517,18 +523,18 @@ export function AdminDashboardClient({
 
         {/* --- QUESTIONS TAB --- */}
         <TabsContent value="questions" className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
+          <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
+            <div className="relative md:col-span-2">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 className="pl-8 bg-card border-border"
-                placeholder="Search questions by query text, submitter details..."
+                placeholder="Search questions by query, name, email..."
                 value={questionSearch}
                 onChange={(e) => setQuestionSearch(e.target.value)}
               />
             </div>
             <Select value={questionStatusFilter} onValueChange={setQuestionStatusFilter}>
-              <SelectTrigger className="w-full sm:w-[180px] bg-card border-border">
+              <SelectTrigger className="bg-card border-border">
                 <SelectValue placeholder="Filter by Status" />
               </SelectTrigger>
               <SelectContent>
@@ -537,6 +543,19 @@ export function AdminDashboardClient({
                 <SelectItem value="in_review">In Review</SelectItem>
                 <SelectItem value="answered">Answered</SelectItem>
                 <SelectItem value="closed">Closed</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={questionFieldFilter} onValueChange={setQuestionFieldFilter}>
+              <SelectTrigger className="bg-card border-border">
+                <SelectValue placeholder="Filter by Field" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Fields</SelectItem>
+                {activeFields.map((f) => (
+                  <SelectItem key={f.id} value={f.id}>
+                    {f.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
